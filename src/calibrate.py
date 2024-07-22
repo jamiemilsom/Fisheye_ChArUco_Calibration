@@ -3,6 +3,8 @@ import numpy as np
 import cv2
 import cv2.aruco
 import json
+import matplotlib.pyplot as plt
+import time
 
 
 class CameraCalibrator:
@@ -14,8 +16,8 @@ class CameraCalibrator:
         self.marker_length = marker_length
         
         self.board = cv2.aruco.CharucoBoard((self.squares_vertically, self.squares_horizontally), self.square_length, self.marker_length, self.aruco_dict)
-        self.camera_matrix = None
-        self.dist_coeffs = None
+        self.K = None
+        self.D = None
         
         
     def make_charuco_board(self):
@@ -28,7 +30,7 @@ class CameraCalibrator:
         cv2.imwrite("charuco_board.png", img)
         
 
-    def visualise_aruco_markers(self, image_paths, graysale=True,refine = True, window_size=(1080,720)):
+    def visualise_aruco_markers(self, image_paths, graysale=True,refine = True,refine_with_charuco=True, window_size=(1080,720)):
         """
         This function iterates through image files, detects ArUco markers,
         and displays the image with markers highlighted at a reduced size.
@@ -58,6 +60,14 @@ class CameraCalibrator:
                 )
                     marker_corners = refined_corners
                     marker_ids = refined_ids
+                    cv2.aruco.drawDetectedMarkers(image, marker_corners, marker_ids)
+                    
+                if refine_with_charuco:
+                    charuco_retval, charuco_corners, charuco_ids = cv2.aruco.interpolateCornersCharuco(marker_corners, marker_ids, image, self.board)
+                    if charuco_retval:
+                        cv2.aruco.drawDetectedCornersCharuco(image, charuco_corners, charuco_ids)
+                        if len(charuco_corners) > len(marker_corners):
+                            print(f"Refining with ChArUco: {len(charuco_corners)} Refining with MarkerIds: {len(marker_corners)} for {image_path}")
                 
                 # print(f"Found {len(marker_ids)} markers in {image_path}")
                 total_detected_markers += len(marker_ids)
@@ -70,15 +80,15 @@ class CameraCalibrator:
                 
                 scale_factor = new_width / w
                 
-                for i, corner in enumerate(marker_corners):
+                # for i, corner in enumerate(marker_corners):
  
-                    corner_resized = corner[0] * scale_factor
-                    corner_resized = corner_resized.astype(int)
+                #     corner_resized = corner[0] * scale_factor
+                #     corner_resized = corner_resized.astype(int)
                     
-                    cv2.polylines(resized_image, [corner_resized], True, (0, 255, 0), 2)
-                    center = np.mean(corner_resized, axis=0).astype(int)
-                    cv2.putText(resized_image, str(marker_ids[i][0]), tuple(center), 
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+                #     cv2.polylines(resized_image, [corner_resized], True, (0, 255, 0), 2)
+                #     center = np.mean(corner_resized, axis=0).astype(int)
+                #     cv2.putText(resized_image, str(marker_ids[i][0]), tuple(center), 
+                #                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
                 
                 cv2.imshow('Detected ArUco Markers', resized_image)
                 cv2.waitKey(1)
@@ -114,29 +124,77 @@ class CameraCalibrator:
                     
         print('Starting calibration...')
 
-        retval, camera_matrix, dist_coeffs, rvecs, tvecs = cv2.aruco.calibrateCameraCharuco(all_charuco_corners, all_charuco_ids, self.board, image.shape[:2], None, None)
-        print('Calibration complete.')
-        
-        print('Camera matrix: ', camera_matrix)
-        print('Distortion coefficients: ', dist_coeffs)
-        np.save('camera_matrix.npy', camera_matrix)
-        np.save('dist_coeffs.npy', dist_coeffs)
-        
-        
-    def fisheye_calibration(self, image_paths, output_path='fisheye_calibration.json'):
-        params = cv2.aruco.DetectorParameters()
-        image_paths.sort()
+        retval, K, D, rvecs, tvecs = cv2.aruco.calibrateCameraCharuco(all_charuco_corners, all_charuco_ids, self.board, image.shape[:2], None, None)
 
         
-    def undistort_images(self, image_paths, output_path):
+        print('K: ', K)
+        print('Distortion coefficients: ', D)
+        np.save('K.npy', K)
+        np.save('D.npy', D)
+        
+                
+    def fisheye_calibration(self, image_paths, output_path='fisheye_calibration.json'):
+        params = cv2.aruco.DetectorParameters()
+        
+        image_paths.sort()
+        
+        all_charuco_corners = []
+        all_charuco_ids = []
+        object_points = []
+        image_points = []
+        
+        print('Detecting ArUco markers and interpolating ChArUco corners...')
+
+        for image_file in image_paths:
+            image = cv2.imread(image_file)
+            image_copy = image.copy()
+            marker_corners, marker_ids, _ = cv2.aruco.detectMarkers(image, self.aruco_dict, parameters=params)
+            
+            if marker_ids is not None and len(marker_ids) > 0:
+                cv2.aruco.drawDetectedMarkers(image_copy, marker_corners, marker_ids)
+                charuco_retval, charuco_corners, charuco_ids = cv2.aruco.interpolateCornersCharuco(marker_corners, marker_ids, image, self.board)
+                if charuco_retval:
+                    all_charuco_corners.append(charuco_corners)
+                    all_charuco_ids.append(charuco_ids)
+                else:
+                    print(f"Could not interpolate corners for {image_file}")
+        
+        print('Mapping ChArUco corners to 3D space...')
+        objPoints = self.board.getChessboardCorners()
+
+        
+        for corners, ids in zip(all_charuco_corners, all_charuco_ids): 
+            obj_points = objPoints[ids]
+            object_points.append(obj_points)
+            image_points.append(corners)
+            
+        print('Starting calibration...')
+        
+        K = np.zeros((3, 3))
+        D = np.zeros((4, 1))
+        
+        retval, K, D, rvecs, tvecs = cv2.fisheye.calibrate(object_points,image_points,image.shape[:2],K,D)
+
+        
+        print('K: ', K)
+        print('Distortion coefficients: ', D)
+        np.save('K.npy', K)
+        np.save('D.npy', D)
+        
+        
+    def undistort_images(self, image_paths, output_path, undistort_type = 1, scale = 0.7):
         """
         This function undistorts images using the camera matrix and distortion coefficients.
         Args:
         image_paths: A list of file paths to images.
         output_path: A string representing the output directory.
+        undistort_type: A int to specify the type of undistortion (0: Pinhole, 1: Fisheye via RectifyMap, 2: Fisheye via Undistort)
+        scale: A float for the output image size
         """
-        camera_matrix = np.load('camera_matrix.npy')
-        dist_coeffs = np.load('dist_coeffs.npy')
+        undist_types = ['Pinhole', 'Fisheye_RectifyMap', 'Fisheye_Undistort']
+        
+        K = np.load('K.npy')
+        D = np.load('D.npy')
 
         image_paths.sort()
 
@@ -144,16 +202,36 @@ class CameraCalibrator:
 
         for image_file in image_paths:
             image = cv2.imread(image_file)
-            undistorted_image = cv2.undistort(image, camera_matrix, dist_coeffs)
+            h, w = image.shape[:2]
+            
+            if undistort_type == 2:
+                undistorted_image = cv2.fisheye.undistortImage(image, K, D, Knew=K)
+            
+            if undistort_type == 1:
+                
+                new_K = cv2.fisheye.estimateNewCameraMatrixForUndistortRectify(
+                    K, D, (w, h), np.eye(3), balance=scale
+                )
+                map1, map2 = cv2.fisheye.initUndistortRectifyMap(
+                    K, D, np.eye(3), new_K, (w, h), cv2.CV_16SC2
+                )
+                undistorted_image = cv2.remap(image, map1, map2, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+            
+            
+            if undistort_type == 0:
+            
+                new_K, roi = cv2.getOptimalNewCameraMatrix(K, D, (w, h), scale, (w, h))
+                undistorted_image = cv2.undistort(image, K, D, None, new_K)
 
-            # Extract filename without extension
             filename, _ = os.path.splitext(os.path.basename(image_file))
-            output_filename = os.path.join(output_path, f"{filename}_undistorted.jpg")
+            output_filename = os.path.join(output_path, f"{filename}_undistorted_{undist_types[undistort_type]}.jpg")
 
-            # Save the undistorted image
+
             cv2.imwrite(output_filename, undistorted_image)
 
         cv2.destroyAllWindows()
+    
+            
         
 
 
@@ -168,7 +246,9 @@ OUTPUT_PATH = '/home/jamie/Documents/reconstruction/data/calibration/undistorted
 file_paths = [os.path.join(PATH_TO_YOUR_IMAGES, f) for f in os.listdir(PATH_TO_YOUR_IMAGES) if f.endswith(".jpg")]
 
 instaCam = CameraCalibrator(ARUCO_DICT, SQUARES_VERTICALLY, SQUARES_HORIZONTALLY, SQUARE_LENGTH, MARKER_LENGTH)
-instaCam.visualise_aruco_markers(file_paths,graysale=True,refine=True)
+# instaCam.visualise_aruco_markers(file_paths,graysale=True,refine=True,refine_with_charuco=False, window_size=(1080,720))
 instaCam.pinhole_calibration(file_paths)
+instaCam.undistort_images(file_paths, OUTPUT_PATH,undistort_type=0, scale=0)
 instaCam.fisheye_calibration(file_paths)
-instaCam.undistort_images(file_paths, OUTPUT_PATH)
+instaCam.undistort_images(file_paths, OUTPUT_PATH,undistort_type=1, scale=0)
+instaCam.undistort_images(file_paths, OUTPUT_PATH,undistort_type=2, scale=0)
