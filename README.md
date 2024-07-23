@@ -34,22 +34,27 @@ This Python script provides a class for calibrating a camera using a ChArUco boa
    instaCam.generate_charuco_board()
    ```
    Replace the parameters with the specific values for your ArUco board, you can generate the image to make sure the board is the same as in your images.
-<img src="readMe/ChArUco_Marker.png" alt="ChArUco Board">
-3. **Visualize ArUco markers (optional):**
+   
+   <img src="readMe/ChArUco_Marker.png" alt="ChArUco Board">
+
+4. **Visualize ArUco markers (optional):**
    ```python
    file_paths = [os.path.join(PATH_TO_YOUR_IMAGES, f) for f in os.listdir(PATH_TO_YOUR_IMAGES) if f.endswith(".jpg")]
    instaCam.visualise_aruco_markers(file_paths, graysale=False, refine=True, refine_with_charuco=True, window_size=(1080,720))
    ```
+   
     <img src="readMe/detected_markers.png" alt="Detected Markers">
     <img src="readMe/corner_detection.png" alt="Corner Detection">
+    
    This function displays images with detected ArUco markers for visual inspection.
-4. **Calibrate the camera:**
+   
+5. **Calibrate the camera:**
    ```python
    instaCam.calibrate(image_paths=file_paths, model='pinhole', output_path='calibration_pinhole.json')
    ```
 
    Replace `model` with `'fisheye'` for fisheye camera calibration.
-5. **Undistort images:**
+6. **Undistort images:**
    ```python
    OUTPUT_PATH = os.path.join(CURRENT_PATH, '../data/calibration/undistorted')
    instaCam.undistort_images(file_paths, OUTPUT_PATH, 'calibration_pinhole.json', undistort_type=0, scale=0)
