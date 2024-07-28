@@ -197,7 +197,7 @@ class CameraCalibrator:
         self.save_camera_parameters(output_path)     
         
         
-    def undistort_images(self, image_paths, output_path, calibration_file = 'calibration.json', undistort_type = 1, scale = 0.7):
+    def undistort_images(self, image_paths, output_path, calibration_file = 'calibration.json', undistort_type = 1, balance = 0.7):
         """
         This function undistorts images using the camera matrix and distortion coefficients.
         Args:
@@ -221,12 +221,12 @@ class CameraCalibrator:
                      
             
             if undistort_type == 0:
-                new_K, roi = cv2.getOptimalNewCameraMatrix(self.K, self.D, (w, h), scale, (w, h))
+                new_K, roi = cv2.getOptimalNewCameraMatrix(self.K, self.D, (w, h), balance)
                 undistorted_image = cv2.undistort(image, self.K, self.D, None, new_K)
                 
             elif undistort_type == 1:
                 new_K = cv2.fisheye.estimateNewCameraMatrixForUndistortRectify(
-                    self.K, self.D, (w, h), np.eye(3), balance=scale
+                    self.K, self.D, (w, h), np.eye(3), balance=balance
                 )
                 map1, map2 = cv2.fisheye.initUndistortRectifyMap(
                     self.K, self.D, np.eye(3), new_K, (w, h), cv2.CV_16SC2
@@ -235,14 +235,23 @@ class CameraCalibrator:
                 
                 
             elif undistort_type == 2:
-                undistorted_image = cv2.fisheye.undistortImage(image, self.K, self.D, Knew=self.K)
+                print('Calibrated K: ',self.K)
+                new_K = self.K.copy()
+                new_K[0,0] *= balance  # Scale fx
+                new_K[1,1] *= balance  # Scale fy
+                new_K[0,2] = w / 2   # Set cx to image center
+                new_K[1,2] = h / 2   # Set cy to image center
+                print('New K: ',new_K)
+                
+                
+                undistorted_image = cv2.fisheye.undistortImage(image, self.K, self.D, Knew=new_K,new_size=(w,h))
             
             else:
                 raise ValueError("Invalid undistort type: {undistort_type}, must be 0, 1, or 2.")
                 
 
             filename, _ = os.path.splitext(os.path.basename(image_file))
-            output_filename = os.path.join(output_path, f"{filename}_undistorted_{undist_types[undistort_type]}.jpg")
+            output_filename = os.path.join(output_path, f"{filename}_undistorted_{undist_types[undistort_type]}_scale{balance}.jpg")
 
 
             cv2.imwrite(output_filename, undistorted_image)
@@ -259,8 +268,8 @@ SQUARES_HORIZONTALLY = 9
 SQUARE_LENGTH = 0.06
 MARKER_LENGTH = 0.045
 CURRENT_PATH = os.path.dirname(os.path.abspath(__file__))
-PATH_TO_YOUR_IMAGES = os.path.join(CURRENT_PATH, '../data/calibration/jpg')
-OUTPUT_PATH = os.path.join(CURRENT_PATH, '../data/calibration/undistorted')
+PATH_TO_YOUR_IMAGES = os.path.join(CURRENT_PATH, '../data/descent_jpgs_2024-01-10/descent_jpgs/descent_2')
+OUTPUT_PATH = os.path.join(CURRENT_PATH, '../data/descent_jpgs_2024-01-10/descent_jpgs/descent_2_undistorted')
 
 file_paths = [os.path.join(PATH_TO_YOUR_IMAGES, f) for f in os.listdir(PATH_TO_YOUR_IMAGES) if f.endswith(".jpg")]
 
@@ -268,9 +277,10 @@ instaCam = CameraCalibrator(
     ARUCO_DICT, SQUARES_VERTICALLY, SQUARES_HORIZONTALLY, SQUARE_LENGTH, MARKER_LENGTH
     )
 
-instaCam.visualise_aruco_markers(file_paths,graysale=False,refine=True,refine_with_charuco=True, window_size=(1080,720))
-instaCam.calibrate(image_paths=file_paths, model='pinhole', output_path='calibration_pinhole.json')
-instaCam.undistort_images(file_paths, OUTPUT_PATH, 'calibration_pinhole.json', undistort_type=0, scale=0)
-instaCam.calibrate(image_paths=file_paths, model='fisheye', output_path='calibration_fisheye.json')
-instaCam.undistort_images(file_paths, OUTPUT_PATH, 'calibration_fisheye.json', undistort_type=1, scale=0)
-instaCam.undistort_images(file_paths, OUTPUT_PATH, 'calibration_fisheye.json', undistort_type=2, scale=0)
+# instaCam.visualise_aruco_markers(file_paths,graysale=False,refine=True,refine_with_charuco=True, window_size=(1080,720))
+# instaCam.calibrate(image_paths=file_paths, model='pinhole', output_path='calibration_pinhole.json')
+# instaCam.undistort_images(file_paths, OUTPUT_PATH, 'calibration_pinhole.json', undistort_type=0, balance=0)
+# instaCam.calibrate(image_paths=file_paths, model='fisheye', output_path='calibration_fisheye.json')
+instaCam.undistort_images(file_paths, OUTPUT_PATH, 'calibration_fisheye.json', undistort_type=2, balance=1)
+# for balance in np.linspace(0, 0.1, 10):
+#     instaCam.undistort_images(file_paths, OUTPUT_PATH, 'calibration_fisheye.json', undistort_type=2, balance=balance)
