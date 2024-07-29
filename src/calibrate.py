@@ -68,6 +68,8 @@ class CameraCalibrator:
                 
                 total_detected_markers += len(marker_ids)
                 detected_markers_list.append(len(marker_ids))
+                cv2.imshow('Detected ArUco Markers', cv2.resize(image, window_size))
+                cv2.waitKey(0)
                 
                 (h, w) = image.shape[:2]
                 new_width = window_size[0]
@@ -85,10 +87,12 @@ class CameraCalibrator:
                     center = np.mean(corner_resized, axis=0).astype(int)
                     cv2.putText(resized_image, str(marker_ids[i][0]), tuple(center), 
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+                    
+                    
                 
                 cv2.imshow('Detected ArUco Markers', resized_image)
                 
-                cv2.waitKey(1)
+                cv2.waitKey(0)
 
         cv2.destroyAllWindows()
         print(f"Total number of images: {total_images}")
@@ -281,6 +285,10 @@ instaCam = CameraCalibrator(
 # instaCam.calibrate(image_paths=file_paths, model='pinhole', output_path='calibration_pinhole.json')
 # instaCam.undistort_images(file_paths, OUTPUT_PATH, 'calibration_pinhole.json', undistort_type=0, balance=0)
 # instaCam.calibrate(image_paths=file_paths, model='fisheye', output_path='calibration_fisheye.json')
-instaCam.undistort_images(file_paths, OUTPUT_PATH, 'calibration_fisheye.json', undistort_type=2, balance=1)
+# instaCam.undistort_images(file_paths, OUTPUT_PATH, 'calibration_fisheye.json', undistort_type=2, balance=1)
 # for balance in np.linspace(0, 0.1, 10):
 #     instaCam.undistort_images(file_paths, OUTPUT_PATH, 'calibration_fisheye.json', undistort_type=2, balance=balance)
+
+instaCam.visualise_aruco_markers(['/home/jamie/Documents/reconstruction/top_left.jpg'],graysale=False,refine=True,refine_with_charuco=True, window_size=(720,720))
+instaCam.calibrate(image_paths=['/home/jamie/Documents/reconstruction/top_left.jpg'], model='fisheye', output_path='calibration_fisheye.json')
+instaCam.undistort_images(['/home/jamie/Documents/reconstruction/top_left.jpg'], '/home/jamie/Documents/reconstruction/top_left_udist.jpg', 'calibration_fisheye.json', undistort_type=2, balance=1)
