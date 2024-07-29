@@ -3,16 +3,44 @@ import numpy as np
 import cv2
 
 class VirtualCamera:
+    """
+    A base class for virtual camera implementations.
+    
+    This class provides basic functionality for loading images and creating masks.
+    """
+    
     def __init__(self, input_folder, output_folder):
+        """
+        Initialize the VirtualCamera.
+
+        Args:
+            input_folder (str): Path to the folder containing input images.
+            output_folder (str): Path to the folder where processed images will be saved.
+        """
         
         self.input_folder = input_folder
         self.output_folder = output_folder
         self.input_image_list = [os.path.join(self.input_folder, f) for f in os.listdir(self.input_folder) if f.endswith(".jpg")]
 
+
+
     @staticmethod
     def load_image(image_path):
         
-        """Loads an image from the given path."""
+        """
+        Load an image from the given path.
+
+        Args:
+            image_path (str): Path to the image file.
+
+        Returns:
+            numpy.ndarray: The loaded image.
+
+        Raises:
+            FileNotFoundError: If the image file is not found.
+            ValueError: If the image cannot be read.
+        """
+        
         if not os.path.exists(image_path):
             raise FileNotFoundError(f"Image file not found: {image_path}")
         image = cv2.imread(image_path)
@@ -20,29 +48,68 @@ class VirtualCamera:
             raise ValueError(f"Failed to read the image: {image_path}")
         return image
 
+
+
     @staticmethod
     def circular_mask(center, radius, height, width):
+        """
+        Create a circular mask with the given center and radius.
+
+        Args:
+            center (tuple): The (x, y) coordinates of the circle's center.
+            radius (int): The radius of the circle.
+            height (int): The height of the mask.
+            width (int): The width of the mask.
+
+        Returns:
+            numpy.ndarray: A binary mask with the circular region set to 255 and the rest to 0.
+        """
         
-        """Creates a circular mask with the given center and radius."""
         mask = np.zeros((height, width), np.uint8)
         cv2.circle(mask, center, radius, 255, -1)
         return mask
 
+
+
 class RectangularCamera(VirtualCamera):
+    """
+    A virtual camera that splits images into rectangular sections.
+    """
+    
     def __init__(self, input_folder, output_folder, sections = 4, overlap_ratio = 0.1):
+        """
+        Initialize the RectangularCamera.
+
+        Args:
+            input_folder (str): Path to the folder containing input images.
+            output_folder (str): Path to the folder where processed images will be saved.
+            sections (int): Number of sections to split the image into (4, 5, or 9).
+            overlap_ratio (float): The ratio of overlap between adjacent sections.
+        """
         super().__init__(input_folder, output_folder)
         self.sections = sections
         self.overlap_ratio = overlap_ratio
+        
+        
 
     def split_image(self, image_path, output_path=None):
+        """
+        Split an image into rectangular sections.
 
+        Args:
+            image_path (str): Path to the input image.
+            output_path (str, optional): Path to save the output image (not used in this implementation).
+
+        Returns:
+            dict: A dictionary containing the split image sections.
+
+        Raises:
+            ValueError: If an invalid number of sections is specified.
+        """
         image = VirtualCamera.load_image(image_path)
         height, width = image.shape[:2]
         half_height, half_width = height // 2, width // 2
         third_height, third_width = height // 3, width // 3
-        center = (width // 2, height // 2)
-        radius = min(width, height) // 2
-        mask = VirtualCamera.circular_mask(center, radius, height, width)
         
         height_multipliers = {
             4: 0.5,
@@ -90,37 +157,89 @@ class RectangularCamera(VirtualCamera):
 
             cv2.imwrite(output_filename, section_image)
             
-        
             
-        
-        
-        
-
 
 class ConcentricCamera(VirtualCamera):
-    def __init__(self, input_folder, output_folder):
+    """
+    A virtual camera that splits images into concentric circular sections.
+    """
+    
+    def __init__(self, input_folder, output_folder, splits, overlap_ratio=0):
+        """
+        Initialize the ConcentricCamera.
+
+        Args:
+            input_folder (str): Path to the folder containing input images.
+            output_folder (str): Path to the folder where processed images will be saved.
+            splits (list): List of radii ratios for splitting the image.
+            overlap_ratio (float): The ratio of overlap between adjacent sections (not used in this implementation).
+        """
         super().__init__(input_folder, output_folder)
+        self.splits = splits
+        self.overlap_ratio = overlap_ratio
+
+
 
     def split_image(self, image_path, output_path=None):
+        """
+        Split an image into concentric circular sections.
+
+        Args:
+            image_path (str): Path to the input image.
+            output_path (str, optional): Path to save the output image (not used in this implementation).
+
+        Returns:
+            dict: A dictionary containing the split image sections.
+        """
         image = VirtualCamera.load_image(image_path)
         height, width = image.shape[:2]
         center = (width // 2, height // 2)
         radius = min(width, height) // 2
+        
+        sections = {}
+        
+        for num, split in enumerate(self.splits):
+            
+            if num == 0:
+                
+                outer_mask = VirtualCamera.circular_mask(center, int(radius * split), height, width)
+                sections[f'camera_{num}'] = cv2.bitwise_and(image, image, mask=outer_mask)
+                
+            else:
+                
+                inner_mask = VirtualCamera.circular_mask(center, int(radius * self.splits[num - 1]), height, width)
+                outer_mask = VirtualCamera.circular_mask(center, int(radius * split), height, width)
+                mask = cv2.bitwise_xor(outer_mask, inner_mask)
+                sections[f'camera_{num}'] = cv2.bitwise_and(image, image, mask=mask)
 
-        mask_outer = VirtualCamera.circular_mask(center, radius, height, width)
-        mask_inner = VirtualCamera.circular_mask(center, int(radius * ratio), height, width)
-        mask = mask_outer - mask_inner
-        concentric_image = cv2.bitwise_and(image, image, mask=mask)
-        output_path = output_path or 'concentric.jpg'
-        cv2.imwrite(output_path, concentric_image)
+            
+        outermost_mask = VirtualCamera.circular_mask(center, int(radius * self.splits[-1]), height, width)
+        inverse_outermost_mask = cv2.bitwise_not(outermost_mask)
+        sections[f'camera_{len(self.splits)}'] = cv2.bitwise_and(image, image, mask=inverse_outermost_mask)
+
+        
+        for section_name, section_image in sections.items():
+
+            section_folder = os.path.join(self.output_folder, section_name)
+            os.makedirs(section_folder, exist_ok=True)
+
+            base_filename = os.path.basename(image_path)
+            output_filename = os.path.join(section_folder, base_filename)
+
+            cv2.imwrite(output_filename, section_image)
+
+        
 
 if __name__ == "__main__":
-    image_path = '/home/jamie/Documents/reconstruction/data/calibration/jpg/IMG_20231011_151438_00_003.jpg'
+    
     input_folder = '/home/jamie/Documents/reconstruction/data/calibration/jpg'
     output_folder = '/home/jamie/Documents/reconstruction/data/calibration/testing_balance/processed'
 
     rectangular_cam = RectangularCamera(input_folder, output_folder, sections=9, overlap_ratio=0.1)
-    concentric_cam = ConcentricCamera(input_folder, output_folder)
+    concentric_cam = ConcentricCamera(input_folder, output_folder, splits=[0.6,0.85], overlap_ratio=0.1)
+    
+    for image_path in concentric_cam.input_image_list:
+        concentric_cam.split_image(image_path)
 
     for image_path in rectangular_cam.input_image_list:
         rectangular_cam.split_image(image_path)
