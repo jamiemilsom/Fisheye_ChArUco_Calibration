@@ -21,6 +21,7 @@ class VirtualCamera:
         self.input_folder = input_folder
         self.output_folder = output_folder
         self.input_image_list = [os.path.join(self.input_folder, f) for f in os.listdir(self.input_folder) if f.endswith(".jpg")]
+        self.input_image_list.sort()
 
 
 
@@ -195,6 +196,7 @@ class ConcentricCamera(VirtualCamera):
         height, width = image.shape[:2]
         center = (width // 2, height // 2)
         radius = min(width, height) // 2
+        overlap = int(self.overlap_ratio * radius)
         
         sections = {}
         
@@ -207,13 +209,13 @@ class ConcentricCamera(VirtualCamera):
                 
             else:
                 
-                inner_mask = VirtualCamera.circular_mask(center, int(radius * self.splits[num - 1]), height, width)
+                inner_mask = VirtualCamera.circular_mask(center, int(radius * self.splits[num - 1] - overlap), height, width)
                 outer_mask = VirtualCamera.circular_mask(center, int(radius * split), height, width)
                 mask = cv2.bitwise_xor(outer_mask, inner_mask)
                 sections[f'camera_{num}'] = cv2.bitwise_and(image, image, mask=mask)
 
             
-        outermost_mask = VirtualCamera.circular_mask(center, int(radius * self.splits[-1]), height, width)
+        outermost_mask = VirtualCamera.circular_mask(center, int(radius * self.splits[-1] - overlap), height, width)
         inverse_outermost_mask = cv2.bitwise_not(outermost_mask)
         sections[f'camera_{len(self.splits)}'] = cv2.bitwise_and(image, image, mask=inverse_outermost_mask)
 
@@ -230,18 +232,19 @@ class ConcentricCamera(VirtualCamera):
 
         
 
-if __name__ == "__main__":
+# if __name__ == "__main__":
     
-    input_folder = '/home/jamie/Documents/reconstruction/data/calibration/jpg'
-    output_folder = '/home/jamie/Documents/reconstruction/data/calibration/testing_balance/processed'
-
-    rectangular_cam = RectangularCamera(input_folder, output_folder, sections=9, overlap_ratio=0.1)
-    concentric_cam = ConcentricCamera(input_folder, output_folder, splits=[0.6,0.85], overlap_ratio=0.1)
+#     input_folder = '/home/jamie/Documents/reconstruction/data/calibration/jpg'
+#     rectangular_output_folder = '/home/jamie/Documents/reconstruction/data/calibration/virtual_cameras/rectangular'
+#     concentric_output_folder = '/home/jamie/Documents/reconstruction/data/calibration/virtual_cameras/concentric'
     
-    for image_path in concentric_cam.input_image_list:
-        concentric_cam.split_image(image_path)
+#     rectangular_cam = RectangularCamera(input_folder, rectangular_output_folder, sections=9, overlap_ratio=0.1)
+#     concentric_cam = ConcentricCamera(input_folder, concentric_output_folder, splits=[0.6], overlap_ratio=0.1)
+    
+#     for image_path in concentric_cam.input_image_list:
+#         concentric_cam.split_image(image_path)
 
-    for image_path in rectangular_cam.input_image_list:
-        rectangular_cam.split_image(image_path)
+#     for image_path in rectangular_cam.input_image_list:
+#         rectangular_cam.split_image(image_path)
 
 
