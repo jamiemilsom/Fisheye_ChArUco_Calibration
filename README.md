@@ -5,9 +5,29 @@ This Python script provides a class for calibrating a camera using a ChArUco boa
 
 
 ### Dependencies
-* OpenCV (cv2) - must be opencv-contrib-python==4.8.0.76
-* NumPy (numpy)
-* JSON (json)
+Venv Reconstruction
+
+To recreate the virtual environment and install dependencies:
+
+```
+python -m venv myenv
+source myenv/bin/activate  # macOS/Linux
+myenv\Scripts\activate     # Windows
+```
+
+Install Dependencies:
+
+```
+pip install -r requirements.txt
+```
+
+Deactivate to exit the venv
+
+```
+deactivate
+```
+
+
 
 ### Usage
 1. **Import the class:**
