@@ -68,6 +68,16 @@ class CameraCalibrator:
                 
                 total_detected_markers += len(marker_ids)
                 detected_markers_list.append(len(marker_ids))
+                print(f"Detected {len(marker_ids)} markers in {image_path}")
+                
+                cv2.imshow('Detected ArUco Markers', cv2.resize(image, window_size))
+                cv2.waitKey(0)
+                
+                # filename, _ = os.path.splitext(os.path.basename(image_path))
+                # folder_path = os.path.dirname(image_path)
+                # output_filename = os.path.join(folder_path, f"{filename}_aruco.jpg")
+                # cv2.imwrite(output_filename, image)
+
                 
                 (h, w) = image.shape[:2]
                 new_width = window_size[0]
@@ -85,10 +95,16 @@ class CameraCalibrator:
                     center = np.mean(corner_resized, axis=0).astype(int)
                     cv2.putText(resized_image, str(marker_ids[i][0]), tuple(center), 
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+                    
+                    
                 
-                cv2.imshow('Detected ArUco Markers', resized_image)
+                # cv2.imshow('Detected ArUco Markers', resized_image)
+                # cv2.waitKey(0)
                 
-                cv2.waitKey(1)
+            else:
+                print(f"No markers detected in {image_path}")
+                cv2.imshow('Detected ArUco Markers', cv2.resize(image, window_size))
+                cv2.waitKey(0)
 
         cv2.destroyAllWindows()
         print(f"Total number of images: {total_images}")
@@ -178,14 +194,18 @@ class CameraCalibrator:
             
             objPoints = self.board.getChessboardCorners()
 
-        
+            count = 0
             for corners, ids in zip(all_charuco_corners, all_charuco_ids): 
-                obj_points = objPoints[ids]
-                object_points.append(obj_points)
-                image_points.append(corners)
+                if len(corners) >= 4:
+                    count += 1
+                    obj_points = objPoints[ids]
+                    object_points.append(obj_points)
+                    image_points.append(corners)
             
             self.K = np.zeros((3, 3))
             self.D = np.zeros((4, 1))
+            
+            print('Number of images used for calibration: ', count)
             
             retval, self.K, self.D, rvecs, tvecs = cv2.fisheye.calibrate(object_points,image_points,image.shape[:2],self.K,self.D)
 
@@ -262,25 +282,25 @@ class CameraCalibrator:
         
 # Example usage
 
-ARUCO_DICT = cv2.aruco.DICT_5X5_100
-SQUARES_VERTICALLY = 12
-SQUARES_HORIZONTALLY = 9
-SQUARE_LENGTH = 0.06
-MARKER_LENGTH = 0.045
-CURRENT_PATH = os.path.dirname(os.path.abspath(__file__))
-PATH_TO_YOUR_IMAGES = os.path.join(CURRENT_PATH, '../data/descent_jpgs_2024-01-10/descent_jpgs/descent_2')
-OUTPUT_PATH = os.path.join(CURRENT_PATH, '../data/descent_jpgs_2024-01-10/descent_jpgs/descent_2_undistorted')
+# ARUCO_DICT = cv2.aruco.DICT_5X5_100
+# SQUARES_VERTICALLY = 12
+# SQUARES_HORIZONTALLY = 9
+# SQUARE_LENGTH = 0.06
+# MARKER_LENGTH = 0.045
+# CURRENT_PATH = os.path.dirname(os.path.abspath(__file__))
+# PATH_TO_YOUR_IMAGES = os.path.join(CURRENT_PATH, '../data/calibration/virtual_cameras/concentric/camera_1')
+# OUTPUT_PATH = os.path.join(CURRENT_PATH, '../data/calibration/bad')
 
-file_paths = [os.path.join(PATH_TO_YOUR_IMAGES, f) for f in os.listdir(PATH_TO_YOUR_IMAGES) if f.endswith(".jpg")]
+# file_paths = [os.path.join(PATH_TO_YOUR_IMAGES, f) for f in os.listdir(PATH_TO_YOUR_IMAGES) if f.endswith(".jpg")]
 
-instaCam = CameraCalibrator(
-    ARUCO_DICT, SQUARES_VERTICALLY, SQUARES_HORIZONTALLY, SQUARE_LENGTH, MARKER_LENGTH
-    )
+# instaCam = CameraCalibrator(
+#     ARUCO_DICT, SQUARES_VERTICALLY, SQUARES_HORIZONTALLY, SQUARE_LENGTH, MARKER_LENGTH
+#     )
 
-# instaCam.visualise_aruco_markers(file_paths,graysale=False,refine=True,refine_with_charuco=True, window_size=(1080,720))
+# instaCam.visualise_aruco_markers(file_paths,graysale=False,refine=True,refine_with_charuco=True, window_size=(480,480 ))
 # instaCam.calibrate(image_paths=file_paths, model='pinhole', output_path='calibration_pinhole.json')
 # instaCam.undistort_images(file_paths, OUTPUT_PATH, 'calibration_pinhole.json', undistort_type=0, balance=0)
-# instaCam.calibrate(image_paths=file_paths, model='fisheye', output_path='calibration_fisheye.json')
-instaCam.undistort_images(file_paths, OUTPUT_PATH, 'calibration_fisheye.json', undistort_type=2, balance=1)
+# instaCam.calibrate(image_paths=file_paths, model='fisheye', output_path='concentric_camera_1.json')
+# instaCam.undistort_images(file_paths, OUTPUT_PATH, 'calibration_fisheye.json', undistort_type=2, balance=1)
 # for balance in np.linspace(0, 0.1, 10):
 #     instaCam.undistort_images(file_paths, OUTPUT_PATH, 'calibration_fisheye.json', undistort_type=2, balance=balance)
