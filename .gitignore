@@ -1,4 +1,3 @@
-data/
-.venv
-reconstruction
-src/__pycache__/
+data/calibration_images/
+data/camera_intrinsics/
+data/raw_images/
