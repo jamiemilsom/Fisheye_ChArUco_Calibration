@@ -1,4 +1,5 @@
-data/calibration_images/
-data/camera_intrinsics/
+data/calibration/images/
+data/calibration/camera_intrinsics/
+data/undistorted_images/
 data/raw_images/
 reconstruction/
