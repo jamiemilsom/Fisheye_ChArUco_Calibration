@@ -27,6 +27,7 @@ class CharucoCalibrator:
         self.marker_length = marker_length
         self.calibration_image_dir = calibration_images_dir
         self.raw_image_dir = raw_images_dir
+        self.cur_dir = os.path.dirname(os.path.abspath(__file__))
         
         self.board = cv2.aruco.CharucoBoard((self.squares_vertically, self.squares_horizontally), self.square_length, self.marker_length, self.aruco_dict)
         self.params = cv2.aruco.DetectorParameters()
@@ -80,7 +81,7 @@ class CharucoCalibrator:
 
         blank_board = np.zeros((img_height, img_width, 3), dtype=np.uint8)
 
-        output_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../data/calibration/charuco_board.png')
+        output_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../data/calibration/charuco_board.png')
         cv2.imwrite(output_path, blank_board)
         print(f"Blank board saved to {output_path}")
         
@@ -95,7 +96,7 @@ class CharucoCalibrator:
         cv2.imshow("charuco_board.png", img)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
-        output_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../data/calibration/charuco_board.png')
+        output_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../data/calibration/charuco_board.png')
         cv2.imwrite(output_path, img)
         print(f"ChArUco board saved to {output_path}")
         
@@ -187,8 +188,10 @@ class CharucoCalibrator:
         marker_ids, marker_corners = self.detect_aruco_markers(image_copy,image_name,verbose=verbose)
         cv2.aruco.drawDetectedMarkers(image_copy, marker_corners, marker_ids)
         cv2.imshow("Detected ArUco Markers", cv2.resize(image_copy, window_size))
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+        if verbose:
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
+            
         
     def show_charuco_corners(self, image: np.ndarray, image_name:str = None, window_size = (480,480),verbose = True) -> None:
         """
@@ -205,8 +208,9 @@ class CharucoCalibrator:
         charuco_ids, charuco_corners = self.detect_charuco_corners(image_copy, image_name,verbose=verbose)
         cv2.aruco.drawDetectedCornersCharuco(image_copy, charuco_corners, charuco_ids)
         cv2.imshow("Detected Charuco Corners", cv2.resize(image_copy, window_size))
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+        if verbose:
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
 
         
     def save_camera_parameters(self, file_path):
@@ -265,7 +269,7 @@ class FisheyeCalibrator(CharucoCalibrator):
         
         for image_name, image in self.calibration_images():
             charuco_ids, charuco_corners = self.detect_charuco_corners(image=image, image_name=image_name,grayscale=grayscale,verbose=verbose)
-            if charuco_ids is not None and len(charuco_ids) > 0:
+            if charuco_ids is not None and len(charuco_ids) > 4:
                 all_charuco_corners.append(charuco_corners)
                 all_charuco_ids.append(charuco_ids)
             else:
@@ -298,7 +302,7 @@ class FisheyeCalibrator(CharucoCalibrator):
 
         print('K: ', self.K)
         print('Distortion coefficients: ', self.D)
-        output_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), f'../../data/camera_intrinsics/{calibration_filename}')
+        output_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), f'../../data/calibration/camera_intrinsics/{calibration_filename}')
         
         self.save_camera_parameters(output_path)
         print(f"Camera calibration data saved to {output_path}")
@@ -323,7 +327,7 @@ class FisheyeCalibrator(CharucoCalibrator):
         """
         try:
 
-            calibration_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), f'../../data/camera_intrinsics/{calibration_filename}') 
+            calibration_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), f'../../data/calibration/camera_intrinsics/{calibration_filename}') 
             self.load_camera_parameters(calibration_path)
                     
             h, w = image.shape[:2]
@@ -372,7 +376,7 @@ class PinholeCalibrator(CharucoCalibrator):
         
         for image_name, image in self.calibration_images():
             charuco_ids, charuco_corners = self.detect_charuco_corners(image=image, image_name=image_name,grayscale=grayscale,verbose=verbose)
-            if charuco_ids is not None and len(charuco_ids) > 0:
+            if charuco_ids is not None and len(charuco_ids) > 4:
                 all_charuco_corners.append(charuco_corners)
                 all_charuco_ids.append(charuco_ids)
             else:
@@ -392,7 +396,7 @@ class PinholeCalibrator(CharucoCalibrator):
         print('Distortion coefficients: ', self.D)
         
         print('Number of images used for calibration: ', len(all_charuco_corners))
-        output_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), f'../../data/camera_intrinsics/{calibration_filename}')
+        output_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), f'../../data/calibration/camera_intrinsics/{calibration_filename}')
         self.save_camera_parameters(output_path)
         print(f"Camera calibration data saved to {output_path}")  
         
@@ -415,7 +419,7 @@ class PinholeCalibrator(CharucoCalibrator):
             np.ndarray: The undistorted image.
         """
         try:
-            calibration_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), f'../../data/camera_intrinsics/{calibration_filename}')
+            calibration_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), f'../../data/calibration/camera_intrinsics/{calibration_filename}')
             self.load_camera_parameters(calibration_path)
 
             for image_name, image in self.raw_images():
@@ -459,7 +463,7 @@ if __name__ == '__main__':
 
     instaCam = FisheyeCalibrator(
         ARUCO_DICT, SQUARES_VERTICALLY, SQUARES_HORIZONTALLY, SQUARE_LENGTH, MARKER_LENGTH, 
-        calibration_images_dir= os.path.join(CURRENT_PATH,'../../data/calibration/images/'),
+        calibration_images_dir= os.path.join(CURRENT_PATH,'../.../data/calibration/images/'),
         raw_images_dir= os.path.join(CURRENT_PATH,'../../data/raw_images/descent_1')
         )
     

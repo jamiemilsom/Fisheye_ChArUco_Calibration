@@ -4,3 +4,4 @@ data/undistorted_images/
 data/virtual_cameras/
 data/raw_images/
 reconstruction/
+__pycache__/
