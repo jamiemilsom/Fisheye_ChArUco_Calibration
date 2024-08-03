@@ -8,6 +8,18 @@ from typing import Generator, Tuple, Optional
 
 class CharucoCalibrator:
     def __init__(self, aruco_dict: int, squares_vertically: int, squares_horizontally: int, square_length: float, marker_length:float, calibration_images_dir:str = None, raw_images_dir:str = None):
+        """
+        Initializes the CharucoCalibrator with the specified parameters.
+
+        Args:
+            aruco_dict (int): The ArUco dictionary to use.
+            squares_vertically (int): Number of squares vertically in the ChArUco board.
+            squares_horizontally (int): Number of squares horizontally in the ChArUco board.
+            square_length (float): Length of each square in the ChArUco board.
+            marker_length (float): Length of each ArUco marker in the ChArUco board.
+            calibration_images_dir (str, optional): Directory containing calibration images.
+            raw_images_dir (str, optional): Directory containing raw images to be processed.
+        """
         self.aruco_dict = cv2.aruco.getPredefinedDictionary(aruco_dict)
         self.squares_vertically = squares_vertically
         self.squares_horizontally = squares_horizontally
@@ -26,7 +38,7 @@ class CharucoCalibrator:
         Generates NumPy arrays of images from the specified directory in sorted order.
 
         Args:
-            folder_path: The path to the directory containing images.
+            folder_path (str): The path to the directory containing images.
 
         Yields:
             Tuple[str, np.ndarray]: A tuple containing the filename and the image as a NumPy array.
@@ -44,7 +56,7 @@ class CharucoCalibrator:
         Generator function that yields images from the calibration images directory.
 
         Yields:
-            np.ndarray: The next image in the list.
+            Tuple[str, np.ndarray]: A tuple containing the filename and the image as a NumPy array.
         """
         yield from self.image_generator(self.calibration_image_dir)
 
@@ -53,13 +65,14 @@ class CharucoCalibrator:
         Generator function that yields images from the raw images directory.
 
         Yields:
-            np.ndarray: The next image in the list.
+            Tuple[str, np.ndarray]: A tuple containing the filename and the image as a NumPy array.
         """
         yield from self.image_generator(self.raw_image_dir)
 
+    
     def generate_blank_board(self) -> None:
         """
-        This function creates a black board and saves it data/charuco_board.png.
+        Creates a blank black board and saves it as data/charuco_board.png.
         """
         size_ratio = self.squares_horizontally / self.squares_vertically
         img_width = 640
@@ -90,14 +103,16 @@ class CharucoCalibrator:
 
     def detect_aruco_markers(self, image: np.ndarray,image_name: str = None, graysale=True,verbose = True) -> Optional[Tuple[np.ndarray, np.ndarray]]:
         """
-        Detects Aruco markers in an image.
+        Detects ArUco markers in an image.
 
         Args:
-            image: The input image as a NumPy array.
-            graysale: Whether to convert the image to grayscale. Defaults to True.
+            image (np.ndarray): The input image as a NumPy array.
+            image_name (str, optional): Name of the image for logging purposes.
+            graysale (bool): Whether to convert the image to grayscale. Defaults to True.
+            verbose (bool): Whether to print detection results. Defaults to True.
 
         Returns:
-            A tuple of (ids, corners) if markers are detected, otherwise None.
+            Optional[Tuple[np.ndarray, np.ndarray]]: A tuple of (ids, corners) if markers are detected, otherwise None.
         """
         
         if graysale:
@@ -126,14 +141,16 @@ class CharucoCalibrator:
 
     def detect_charuco_corners(self, image: np.ndarray,image_name: str = None, grayscale=True,verbose = True) -> Optional[Tuple[np.ndarray, np.ndarray]]:
         """
-        Detects Charuco corners in an image.
+        Detects ChArUco corners in an image.
 
         Args:
-            image: The input image as a NumPy array.
-            graysale: Whether to convert the image to grayscale. Defaults to True.
+            image (np.ndarray): The input image as a NumPy array.
+            image_name (str, optional): Name of the image for logging purposes.
+            grayscale (bool): Whether to convert the image to grayscale. Defaults to True.
+            verbose (bool): Whether to print detection results. Defaults to True.
 
         Returns:
-            A tuple of (charuco_ids, charuco_corners) if corners are detected, otherwise None.
+            Optional[Tuple[np.ndarray, np.ndarray]]: A tuple of (charuco_ids, charuco_corners) if corners are detected, otherwise None.
         """
 
         marker_ids, marker_corners = self.detect_aruco_markers(image, grayscale,verbose=verbose)
@@ -159,9 +176,12 @@ class CharucoCalibrator:
         Displays the detected ArUco markers in an image.
 
         Args:
-            image: The input image as a NumPy array.
-            window_size: A tuple of (width, height) for the window size. Defaults to (480, 480).
+            image (np.ndarray): The input image as a NumPy array.
+            image_name (str, optional): Name of the image for logging purposes.
+            window_size (tuple): A tuple of (width, height) for the window size. Defaults to (480, 480).
+            verbose (bool): Whether to print detection results. Defaults to True.
         """
+
 
         image_copy = image.copy()
         marker_ids, marker_corners = self.detect_aruco_markers(image_copy,image_name,verbose=verbose)
@@ -175,8 +195,10 @@ class CharucoCalibrator:
         Displays the detected ChArUco corners in an image.
 
         Args:
-            image: The input image as a NumPy array.
-            window_size: A tuple of (width, height) for the window size. Defaults to (480, 480).
+            image (np.ndarray): The input image as a NumPy array.
+            image_name (str, optional): Name of the image for logging purposes.
+            window_size (tuple): A tuple of (width, height) for the window size. Defaults to (480, 480).
+            verbose (bool): Whether to print detection results. Defaults to True.
         """
 
         image_copy = image.copy()
@@ -231,10 +253,10 @@ class FisheyeCalibrator(CharucoCalibrator):
         Performs Fisheye camera calibration using ChArUco markers.
 
         Args:
-            output_path (str, optional): The path to save the calulated camera matrix (K) and distortion matrix (D) as a JSON file.
-
-        Returns:
-            None
+            grayscale (bool): Whether to convert images to grayscale. Defaults to True.
+            calibration_filename (str): Filename to save the calibration results. Defaults to 'fisheye_calibration.json'.
+            window_size (tuple): Size of the window for displaying images. Defaults to (480, 480).
+            verbose (bool): Whether to print detailed information during calibration. Defaults to False.
         """
         
         all_charuco_corners = []
@@ -283,6 +305,22 @@ class FisheyeCalibrator(CharucoCalibrator):
         
         
     def undistort_image(self, image: np.ndarray, image_name:str = None, calibration_filename = 'fisheye_calibration.json', balance = 1, show_image = True, save_image = True, output_path: str = None,window_size = (480,480)) -> np.ndarray:
+        """
+        Undistorts a fisheye image using the calibrated parameters.
+
+        Args:
+            image (np.ndarray): The input image to undistort.
+            image_name (str, optional): Name of the image for saving purposes.
+            calibration_filename (str): Filename of the calibration file. Defaults to 'fisheye_calibration.json'.
+            balance (float): Balance parameter for undistortion. Defaults to 1.
+            show_image (bool): Whether to display the undistorted image. Defaults to True.
+            save_image (bool): Whether to save the undistorted image. Defaults to True.
+            output_path (str, optional): Path to save the undistorted image.
+            window_size (tuple): Size of the window for displaying images. Defaults to (480, 480).
+
+        Returns:
+            np.ndarray: The undistorted image.
+        """
         try:
 
             calibration_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), f'../../data/camera_intrinsics/{calibration_filename}') 
@@ -321,13 +359,12 @@ class PinholeCalibrator(CharucoCalibrator):
         Performs pinhole camera calibration using ChArUco markers.
 
         Args:
-            image_paths (list): A list of image file paths to be used for calibration, these must be images of a ChArUco board.
-            model (str, optional): The camera model to use for calibration, either 'pinhole' or 'fisheye'.
-            output_path (str, optional): The path to save the calulated camera matrix (K) and distortion matrix (D) as a JSON file.
-
-        Returns:
-            None
+            grayscale (bool): Whether to convert images to grayscale. Defaults to True.
+            calibration_filename (str): Filename to save the calibration results. Defaults to 'pinhole_calibration.json'.
+            window_size (tuple): Size of the window for displaying images. Defaults to (480, 480).
+            verbose (bool): Whether to print detailed information during calibration. Defaults to False.
         """
+
     
         
         all_charuco_corners = []
@@ -362,13 +399,20 @@ class PinholeCalibrator(CharucoCalibrator):
         
     def undistort_image(self, image: np.ndarray, image_name:str = None, calibration_filename = 'pinhole_calibration.json', balance = 1, show_image = True, save_image = True, output_path: str = None,window_size = (480,480)) -> np.ndarray:
         """
-        This function undistorts images using the camera matrix and distortion coefficients.
+        Undistorts a pinhole camera image using the calibrated parameters.
+
         Args:
-        image_paths: A list of file paths to images.
-        output_path: A string representing the output directory.
-        calibration_file (str, optional): Path to the JSON file containing camera calibration data. Defaults to 'calibration.json'.
-        undistort_type: A int to specify the type of undistortion (0: Pinhole, 1: Fisheye via RectifyMap, 2: Fisheye via Undistort)
-        scale: A float for the output image size
+            image (np.ndarray): The input image to undistort.
+            image_name (str, optional): Name of the image for saving purposes.
+            calibration_filename (str): Filename of the calibration file. Defaults to 'pinhole_calibration.json'.
+            balance (float): Balance parameter for undistortion. Defaults to 1.
+            show_image (bool): Whether to display the undistorted image. Defaults to True.
+            save_image (bool): Whether to save the undistorted image. Defaults to True.
+            output_path (str, optional): Path to save the undistorted image.
+            window_size (tuple): Size of the window for displaying images. Defaults to (480, 480).
+
+        Returns:
+            np.ndarray: The undistorted image.
         """
         try:
             calibration_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), f'../../data/camera_intrinsics/{calibration_filename}')
