@@ -20,8 +20,7 @@ class VirtualCamera:
         
         self.input_folder = input_folder
         self.output_folder = output_folder
-        self.input_image_list = [os.path.join(self.input_folder, f) for f in os.listdir(self.input_folder) if f.endswith(".jpg")]
-        self.input_image_list.sort()
+        self.input_image_list =  [os.path.join(self.input_folder, f) for f in sorted(os.listdir(self.input_folder)) if f.lower().endswith(('.jpg', '.jpeg', '.png', '.bmp', '.tiff'))]
 
 
 
@@ -232,19 +231,20 @@ class ConcentricCamera(VirtualCamera):
 
         
 
-# if __name__ == "__main__":
+if __name__ == "__main__":
     
-#     input_folder = '/home/jamie/Documents/reconstruction/data/calibration/jpg'
-#     rectangular_output_folder = '/home/jamie/Documents/reconstruction/data/calibration/virtual_cameras/rectangular'
-#     concentric_output_folder = '/home/jamie/Documents/reconstruction/data/calibration/virtual_cameras/concentric'
+    input_folder = os.path.join(os.path.dirname(__file__), "../../data/raw_images/")
+    rectangular_output_folder = os.path.join(os.path.dirname(__file__), "../../data/virtual_cameras/rectangular_images/")
+    concentric_output_folder = os.path.join(os.path.dirname(__file__), "../../data/virtual_cameras/concentric_images/")
     
-#     rectangular_cam = RectangularCamera(input_folder, rectangular_output_folder, sections=9, overlap_ratio=0.1)
-#     concentric_cam = ConcentricCamera(input_folder, concentric_output_folder, splits=[0.6], overlap_ratio=0.1)
+    rectangular_cam = RectangularCamera(input_folder, rectangular_output_folder, sections=9, overlap_ratio=0.1)
+    concentric_cam = ConcentricCamera(input_folder, concentric_output_folder, splits=[0.6], overlap_ratio=0.1)
     
-#     for image_path in concentric_cam.input_image_list:
-#         concentric_cam.split_image(image_path)
+    
+    for image_path in concentric_cam.input_image_list:
+        concentric_cam.split_image(image_path)
 
-#     for image_path in rectangular_cam.input_image_list:
-#         rectangular_cam.split_image(image_path)
+    for image_path in rectangular_cam.input_image_list:
+        rectangular_cam.split_image(image_path)
 
 
