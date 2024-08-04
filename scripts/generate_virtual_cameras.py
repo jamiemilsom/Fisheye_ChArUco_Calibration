@@ -1,7 +1,7 @@
 import os
 import numpy as np
 import cv2
-from src.virtual_camera.virtual_camera import RectangularCamera, ConcentricCamera
+from virtual_camera import RectangularCamera, ConcentricCamera
 
 
 ARUCO_DICT = cv2.aruco.DICT_5X5_100

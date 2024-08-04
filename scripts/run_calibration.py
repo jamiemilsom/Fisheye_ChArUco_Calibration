@@ -5,7 +5,7 @@ import cv2
 import cv2.aruco
 import json
 from typing import Generator, Tuple, Optional
-from src.calibration.calibrate import FisheyeCalibrator, PinholeCalibrator
+from calibration import FisheyeCalibrator, PinholeCalibrator
 
 ARUCO_DICT = cv2.aruco.DICT_5X5_100
 SQUARES_VERTICALLY = 12
@@ -28,3 +28,6 @@ instaCamPinhole = PinholeCalibrator(
 
 instaCamFisheye.calibrate()
 instaCamPinhole.calibrate()
+
+instaCamFisheye.export_camera_params_colmap()
+instaCamPinhole.export_camera_params_colmap()

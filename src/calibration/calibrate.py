@@ -229,7 +229,7 @@ class CharucoCalibrator:
         json.dump(json_data, open(file_path, 'w'))    
         
         
-    def load_camera_parameters(self, file_path):
+    def load_camera_parameters(self, file_path: str = None) -> None:
         """
         Loads camera intrinsic parameters from a JSON file.
 
@@ -239,12 +239,12 @@ class CharucoCalibrator:
         Returns:
             tuple: A tuple containing the camera matrix (K) and distortion coefficients (D).
         """
-
         with open(file_path, 'r') as f:
             camera_intrinsics = json.load(f)
 
         self.K = np.array(camera_intrinsics['K'])
         self.D = np.array(camera_intrinsics['D'])
+        
         
         
         
@@ -354,6 +354,25 @@ class FisheyeCalibrator(CharucoCalibrator):
             print(f"Error undistorting image {image_name}: {e}")
             return None
         
+    def export_camera_params_colmap(self, calibration_path: str = None) -> None:
+        """
+        Exports camera parameters in COLMAP format.
+        """
+        if calibration_path is None:
+            calibration_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), f'../../data/calibration/camera_intrinsics/fisheye_calibration.json')
+        
+        self.load_camera_parameters(calibration_path)
+        fx = self.K[0, 0]
+        fy = self.K[1, 1]
+        cx = self.K[0, 2]
+        cy = self.K[1, 2]
+        k1 = self.D[0][0]
+        k2 = self.D[1][0]
+        k3 = self.D[2][0]
+        k4 = self.D[3][0]
+        print('Camera parameters for COLMAP:')
+        print(f"OPENCV_FISHEYE: {fx}, {fy}, {cx}, {cy}, {k1}, {k2}, {k3}, {k4}")
+        
         
 class PinholeCalibrator(CharucoCalibrator):
         
@@ -446,6 +465,27 @@ class PinholeCalibrator(CharucoCalibrator):
         except Exception as e:
             print(f"Error undistorting image {image_name}: {e}")
             return None
+        
+    def export_camera_params_colmap(self, calibration_path: str = None) -> None:
+        """
+        Exports camera parameters in COLMAP format.
+        """
+        
+        if calibration_path is None:
+            calibration_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), f'../../data/calibration/camera_intrinsics/pinhole_calibration.json')
+        
+        self.load_camera_parameters(calibration_path)
+        fx = self.K[0, 0]
+        fy = self.K[1, 1]
+        cx = self.K[0, 2]
+        cy = self.K[1, 2]
+        k1 = self.D[0][0]
+        k2 = self.D[0][1]
+        p1 = self.D[0][2]
+        p2 = self.D[0][3]
+        k3 = self.D[0][4]
+        print('Camera parameters for COLMAP:')
+        print(f"OPENCV: {fx}, {fy}, {cx}, {cy}, {k1}, {k2}, {p1}, {p2}")
     
             
         

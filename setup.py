@@ -25,13 +25,6 @@ setup(
             'pytest'
         ],
     },
-    entry_points={
-        'console_scripts': [
-            'calibrate-camera=scripts.run_calibration:main',
-            'run-colmap=scripts.run_colmap:main',
-            'run-meshroom=scripts.run_meshroom:main',
-        ],
-    },
     classifiers=[
         'Programming Language :: Python :: 3',
         'License :: OSI Approved :: MIT License',
