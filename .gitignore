@@ -5,3 +5,5 @@ data/virtual_cameras/
 data/raw_images/
 reconstruction/
 __pycache__/
+data/
+*js
